@@ -1,13 +1,17 @@
 import fetch from "node-fetch";
 
-const BACKEND_URL = "http://zeynal-bot-core.internal:8080";
-
 export default async function handler(req) {
   try {
+    // Gelen path
     const path = req.originalUrl || "/";
-    const targetUrl = BACKEND_URL + path;
 
-    // Body verisi
+    // Proxy hedefi — FAZ-Core (gerekirse port ekleriz)
+    const targetBase = "https://zeynal-bot-core.fly.dev";
+
+    // Hedef URL
+    const targetUrl = new URL(path, targetBase);
+
+    // Body oku
     let body = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       body = await new Promise((resolve) => {
@@ -17,13 +21,20 @@ export default async function handler(req) {
       });
     }
 
+    // Header fix — TARAYICI HOST HEADER’I SİL (EN KRİTİK FIX)
+    const cleanHeaders = {
+      ...req.headers,
+    };
+
+    delete cleanHeaders.host;     // HTTPS fix
+    delete cleanHeaders.origin;   // güvenlik fix
+    delete cleanHeaders.referer;  // CORS fix
+    delete cleanHeaders["content-length"]; // Fly bazen kırıyor
+
     // Proxy isteği
-    const response = await fetch(targetUrl, {
+    const response = await fetch(targetUrl.toString(), {
       method: req.method,
-      headers: {
-        ...req.headers,
-        host: undefined, // backend host override engelleme
-      },
+      headers: cleanHeaders,
       body: body,
       redirect: "follow",
     });
@@ -42,4 +53,4 @@ export default async function handler(req) {
       body: "Proxy server error",
     };
   }
-}
+} 
