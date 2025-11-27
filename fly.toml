@@ -1,7 +1,6 @@
 app = "hoopbrain-proxy"
 primary_region = "ams"
 
-# Bölgeyi zorla — Fly.io artık IAD’de makine açamaz
 force_region = true
 
 kill_signal = "SIGINT"
@@ -11,56 +10,38 @@ kill_timeout = "5s"
 NODE_ENV = "production"
 PORT = "8080"
 
-# ==========================================
-# HTTP SERVICE (LOAD BALANCER)
-# ==========================================
 [http_service]
 internal_port = 8080
 force_https = true
-
-# Ücretsiz Fly.io Planına Uygun Autoscale
-auto_start_machines = true      # Trafik gelince makineyi aç
-auto_stop_machines = true       # Trafik bitince kapat
-min_machines_running = 1        # ANA makine hep açık
-max_machines_running = 2        # Yükte ikinci makine aç
-
+auto_start_machines = true
+auto_stop_machines = true
+min_machines_running = 1
+max_machines_running = 2
 processes = ["app"]
 
-# ==========================================
-# MACHINE TYPE (FREE TIER UYUMLU)
-# ==========================================
 [[vm]]
 cpu_kind = "shared"
 cpus = 1
 memory = "512mb"
 
-# ==========================================
-# SERVICES
-# ==========================================
 [[services]]
 internal_port = 8080
 protocol = "tcp"
 
   [[services.ports]]
-  port = 80    # HTTP
+  port = 80
 
   [[services.ports]]
-  port = 443   # HTTPS
+  port = 443
 
   [[services.concurrency]]
   type = "requests"
   soft_limit = 60
   hard_limit = 120
 
-# ==========================================
-# DEPLOY STRATEGY
-# ==========================================
 [deploy]
 strategy = "rolling"
 
-# ==========================================
-# EXPERIMENTAL
-# ==========================================
 [experimental]
 allowed_public_ports = []
 auto_rollback = true
