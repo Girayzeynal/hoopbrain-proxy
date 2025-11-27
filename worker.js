@@ -2,42 +2,43 @@ import fetch from "node-fetch";
 
 export default async function handler(req) {
   try {
-    // Eğer url sadece "/" veya relatif ise, base URL ekle
-    let incomingUrl = req.originalUrl || "/";
+    // Gelen istek URL'sini absolute hale getiriyoruz
     const base = "https://hoopbrain-proxy.fly.dev";
-    const fullUrl = new URL(incomingUrl, base);
+    const path = req.originalUrl || "/";
+    const fullUrl = new URL(path, base);
 
-    // Proxy target host
+    // Proxy hedef domain
     fullUrl.hostname = "zeynal-bot-core.fly.dev";
     fullUrl.protocol = "https:";
 
-    // BODY okuma
+    // BODY okunması (GET/HEAD harici)
     let bodyData = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       bodyData = await new Promise((resolve) => {
-        let chunks = [];
-        req.on("data", c => chunks.push(c));
+        const chunks = [];
+        req.on("data", chunk => chunks.push(chunk));
         req.on("end", () => resolve(Buffer.concat(chunks)));
       });
     }
 
-    // Proxy request
-    const response = await fetch(fullUrl.toString(), {
+    // Proxy FETCH isteği
+    const proxyResponse = await fetch(fullUrl.href, {
       method: req.method,
       headers: req.headers,
       body: bodyData,
       redirect: "follow"
     });
 
-    const text = await response.text();
+    // Yanıt gövdesini TEXT olarak okuyoruz
+    const responseBody = await proxyResponse.text();
 
     return {
-      status: response.status,
-      body: text
+      status: proxyResponse.status,
+      body: responseBody
     };
 
-  } catch (err) {
-    console.error("Proxy error:", err);
+  } catch (error) {
+    console.error("Proxy error:", error);
     return {
       status: 500,
       body: "Proxy server error"
