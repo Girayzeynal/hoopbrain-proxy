@@ -2,46 +2,49 @@ import fetch from "node-fetch";
 
 export default async function handler(req) {
   try {
-    // Gelen istek URL'sini absolute hale getiriyoruz
-    const base = "https://hoopbrain-proxy.fly.dev";
-    const path = req.originalUrl || "/";
-    const fullUrl = new URL(path, base);
+    // Her ihtimale karşı base URL
+    const BASE = "https://hoopbrain-proxy.fly.dev";
 
-    // Proxy hedef domain
-    fullUrl.hostname = "zeynal-bot-core.fly.dev";
-    fullUrl.protocol = "https:";
+    // Gelen istek URL bilgisini al
+    let incoming = req.originalUrl || "/";
 
-    // BODY okunması (GET/HEAD harici)
-    let bodyData = null;
+    // Relative URL'ler için BASE ile birleştir
+    let targetUrl = new URL(incoming, BASE);
+
+    // Proxy target hostu ayarla
+    targetUrl.hostname = "zeynal-bot-core.fly.dev";
+    targetUrl.protocol = "https:";
+
+    // BODY verisini oku (GET ve HEAD hariç)
+    let body = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
-      bodyData = await new Promise((resolve) => {
+      body = await new Promise((resolve) => {
         const chunks = [];
-        req.on("data", chunk => chunks.push(chunk));
+        req.on("data", (c) => chunks.push(c));
         req.on("end", () => resolve(Buffer.concat(chunks)));
       });
     }
 
-    // Proxy FETCH isteği
-    const proxyResponse = await fetch(fullUrl.href, {
+    // Proxy isteğini gönder
+    const proxied = await fetch(targetUrl.toString(), {
       method: req.method,
       headers: req.headers,
-      body: bodyData,
-      redirect: "follow"
+      body: body,
+      redirect: "follow",
     });
 
-    // Yanıt gövdesini TEXT olarak okuyoruz
-    const responseBody = await proxyResponse.text();
+    const text = await proxied.text();
 
     return {
-      status: proxyResponse.status,
-      body: responseBody
+      status: proxied.status,
+      body: text,
     };
 
-  } catch (error) {
-    console.error("Proxy error:", error);
+  } catch (err) {
+    console.error("Proxy error:", err);
     return {
       status: 500,
-      body: "Proxy server error"
+      body: "Proxy server error",
     };
   }
-}
+} 
