@@ -5,11 +5,9 @@ compatibility_date = "2025-01-01"
 account_id = "e1314ca11d75591a8d7d262a8bbecf33"
 workers_dev = true
 
-# Domain routing (hoopbrain.xyz -> Worker)
 routes = [
-  { pattern = "hoopbrain.xyz/*", zone_id = "0bdf3bd68420f8f8b0c062ae38592bcd" }
+    { pattern = "hoopbrain.xyz/*", zone_id = "0bdf3bd68420f8f8b0c062ae38592bcd" }
 ]
 
-# Varsayılan yapılandırmalar
 usage_model = "unbound"
 compatibility_flags = []
