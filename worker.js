@@ -2,15 +2,16 @@ import fetch from "node-fetch";
 
 export default async function handler(req) {
   try {
-    // Node ortamı için base URL veriyoruz
+    // Eğer url sadece "/" veya relatif ise, base URL ekle
+    let incomingUrl = req.originalUrl || "/";
     const base = "https://hoopbrain-proxy.fly.dev";
-    const url = new URL(req.originalUrl, base);
+    const fullUrl = new URL(incomingUrl, base);
 
-    // Backend hedef domain
-    url.hostname = "zeynal-bot-core.fly.dev";
-    url.protocol = "https:";
+    // Proxy target host
+    fullUrl.hostname = "zeynal-bot-core.fly.dev";
+    fullUrl.protocol = "https:";
 
-    // Body okuma
+    // BODY okuma
     let bodyData = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       bodyData = await new Promise((resolve) => {
@@ -20,16 +21,14 @@ export default async function handler(req) {
       });
     }
 
-    // Yeni istek
-    const modifiedRequest = {
+    // Proxy request
+    const response = await fetch(fullUrl.toString(), {
       method: req.method,
       headers: req.headers,
       body: bodyData,
       redirect: "follow"
-    };
+    });
 
-    // Proxy istek
-    const response = await fetch(url.toString(), modifiedRequest);
     const text = await response.text();
 
     return {
