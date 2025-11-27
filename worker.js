@@ -2,29 +2,25 @@ import fetch from "node-fetch";
 
 export default async function handler(req) {
   try {
-    // Orijinal isteğin tüm detaylarını alıyoruz
-    const originalUrl = req.url;
-    const url = new URL(originalUrl);
+    // Node ortamı için base URL veriyoruz
+    const base = "https://hoopbrain-proxy.fly.dev";
+    const url = new URL(req.originalUrl, base);
 
-    // Domain'i Fly.io backend’e yönlendiriyoruz
+    // Backend hedef domain
     url.hostname = "zeynal-bot-core.fly.dev";
     url.protocol = "https:";
 
     // Body okuma
     let bodyData = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
-      try {
-        bodyData = await new Promise((resolve) => {
-          let data = [];
-          req.on("data", chunk => data.push(chunk));
-          req.on("end", () => resolve(Buffer.concat(data)));
-        });
-      } catch (e) {
-        console.error("Body parse error:", e);
-      }
+      bodyData = await new Promise((resolve) => {
+        let chunks = [];
+        req.on("data", c => chunks.push(c));
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+      });
     }
 
-    // Yeni request oluşturuyoruz
+    // Yeni istek
     const modifiedRequest = {
       method: req.method,
       headers: req.headers,
@@ -32,14 +28,13 @@ export default async function handler(req) {
       redirect: "follow"
     };
 
-    // Backend’e yönlendiriyoruz
+    // Proxy istek
     const response = await fetch(url.toString(), modifiedRequest);
-
-    const responseText = await response.text();
+    const text = await response.text();
 
     return {
       status: response.status,
-      body: responseText
+      body: text
     };
 
   } catch (err) {
