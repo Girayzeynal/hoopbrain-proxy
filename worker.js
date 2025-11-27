@@ -1,14 +1,22 @@
+import fetch from "node-fetch";
+
 export default async function handler(req) {
   try {
     const path = req.originalUrl || "/";
 
-    // Proxy hedefi — FAZ-Core backend
+    // LOCAL route’ları ASLA proxy’e gönderme!
+    if (path === "/" || path.startsWith("/ping")) {
+      return {
+        status: 200,
+        body: "LOCAL_ROUTE",
+      };
+    }
+
     const targetBase = "https://zeynal-bot-core.fly.dev";
     const targetUrl = new URL(path, targetBase);
 
-    // Body oku
     let body = null;
-    if (!["GET", "HEAD"].includes(req.method)) {
+    if (req.method !== "GET" && req.method !== "HEAD") {
       body = await new Promise((resolve) => {
         const chunks = [];
         req.on("data", (c) => chunks.push(c));
@@ -16,14 +24,12 @@ export default async function handler(req) {
       });
     }
 
-    // Header temizleme (SSL + CORS fix)
     const cleanHeaders = { ...req.headers };
     delete cleanHeaders.host;
     delete cleanHeaders.origin;
     delete cleanHeaders.referer;
     delete cleanHeaders["content-length"];
 
-    // Proxy request
     const response = await fetch(targetUrl.toString(), {
       method: req.method,
       headers: cleanHeaders,
@@ -31,23 +37,17 @@ export default async function handler(req) {
       redirect: "follow",
     });
 
-    // Response type auto-detect
-    const contentType = response.headers.get("content-type") || "";
-    let responseBody;
-
-    if (contentType.includes("application/json")) {
-      responseBody = await response.json();
-    } else {
-      responseBody = await response.text();
-    }
-
+    const text = await response.text();
     return {
       status: response.status,
-      body: responseBody,
+      body: text,
     };
 
-  } catch (error) {
-    console.error("Proxy error:", error);
-    return { status: 500, body: "Proxy server error" };
+  } catch (err) {
+    console.error("Proxy error:", err);
+    return {
+      status: 500,
+      body: "Proxy server error",
+    };
   }
-}
+} 
