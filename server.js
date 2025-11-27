@@ -8,18 +8,24 @@ const PORT = process.env.PORT || 8080;
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Health Check (Fly.io otomatik çağırır)
+// Fly.io health check
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-// Tüm istekleri worker.js'ye gönderiyoruz
+// Tarayıcı favicon isteği → worker'a gitmesin (EN ÖNEMLİ FIX)
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end();
+});
+
+// Tüm diğer istekleri worker.js'ye yönlendir
 app.all("*", async (req, res) => {
   try {
     const response = await handler(req);
 
-    // Response headers ileride eklenebilir, şu an gerek yok
-    res.status(response.status || 200).send(response.body);
+    res
+      .status(response.status || 200)
+      .send(response.body);
 
   } catch (error) {
     console.error("Proxy error:", error);
@@ -30,4 +36,4 @@ app.all("*", async (req, res) => {
 // Sunucu başlat
 app.listen(PORT, () => {
   console.log(`HoopBrain Proxy is running on port ${PORT}`);
-});
+}); 
