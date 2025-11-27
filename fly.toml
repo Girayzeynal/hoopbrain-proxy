@@ -1,5 +1,5 @@
 app = "hoopbrain-proxy"
-primary_region = "iad"
+primary_region = "ams"
 
 kill_signal = "SIGINT"
 kill_timeout = "5s"
@@ -8,32 +8,36 @@ kill_timeout = "5s"
 NODE_ENV = "production"
 PORT = "8080"
 
-# ================================
-#  HTTP SERVICE (LOAD BALANCER)
-# ================================
+# ==========================================
+# HTTP SERVICE (LOAD BALANCER)
+# ==========================================
 [http_service]
 internal_port = 8080
 force_https = true
 
-# Proxy daima 1 makine açık → yük olunca 3'e çıkar
+# Otomatik scale — Ama ÜCRETSİZ PLAN KURALLARINA UYGUN
 auto_start_machines = true
-auto_stop_machines = false
+auto_stop_machines = true
+
+# Normalde 1 makine çalışır
 min_machines_running = 1
-max_machines_running = 3
+
+# Çok yükte ikinci makine açılır (güvenli değer)
+max_machines_running = 2
 
 processes = ["app"]
 
-# ================================
-#  MACHINE TYPE
-# ================================
+# ==========================================
+# MACHINE TYPE (FREE TIER)
+# ==========================================
 [[vm]]
 cpu_kind = "shared"
 cpus = 1
-memory = "1024mb"
+memory = "512mb"
 
-# ================================
-#  SECONDARY REGION (Failover)
-# ================================
+# ==========================================
+# SECONDARY REGION (Traffic Failover)
+# ==========================================
 [[services]]
 internal_port = 8080
 protocol = "tcp"
@@ -46,13 +50,18 @@ protocol = "tcp"
 
   [[services.concurrency]]
   type = "requests"
-  soft_limit = 50
-  hard_limit = 100
+  soft_limit = 60
+  hard_limit = 120
 
-# Allow traffic to scale across regions
+# ==========================================
+# DEPLOY STRATEGY
+# ==========================================
 [deploy]
 strategy = "rolling"
 
+# ==========================================
+# EXPERIMENTAL
+# ==========================================
 [experimental]
 allowed_public_ports = []
 auto_rollback = true 
