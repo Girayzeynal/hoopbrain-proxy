@@ -15,20 +15,20 @@ PORT = "8080"
 internal_port = 8080
 force_https = true
 
-# Otomatik scale — Ama ÜCRETSİZ PLAN KURALLARINA UYGUN
+# Ücretsiz Fly.io Tier için optimize edilmiş autoscaling
 auto_start_machines = true
 auto_stop_machines = true
 
-# Normalde 1 makine çalışır
+# Tek makine sürekli açık (ANA)
 min_machines_running = 1
 
-# Çok yükte ikinci makine açılır (güvenli değer)
+# Yük bindiğinde ikinci makine açılır (YARDIMCI)
 max_machines_running = 2
 
 processes = ["app"]
 
 # ==========================================
-# MACHINE TYPE (FREE TIER)
+# MACHINE TYPE (FREE TIER UYUMLU)
 # ==========================================
 [[vm]]
 cpu_kind = "shared"
@@ -36,7 +36,7 @@ cpus = 1
 memory = "512mb"
 
 # ==========================================
-# SECONDARY REGION (Traffic Failover)
+# SERVICE PORTS + CONCURRENCY
 # ==========================================
 [[services]]
 internal_port = 8080
@@ -64,4 +64,4 @@ strategy = "rolling"
 # ==========================================
 [experimental]
 allowed_public_ports = []
-auto_rollback = true 
+auto_rollback = true
