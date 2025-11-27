@@ -5,10 +5,10 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 # ---- COPY PACKAGE FILES ----
-COPY package*.json ./
+COPY package.json package-lock.json* ./
 
 # ---- INSTALL PROD DEPENDENCIES ----
-RUN npm install --production
+RUN npm ci --only=production
 
 # ---- COPY ALL PROJECT FILES ----
 COPY . .
@@ -21,4 +21,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # ---- START COMMAND ----
-CMD ["npm", "start"]
+CMD ["npm", "start"] 
