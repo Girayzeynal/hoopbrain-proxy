@@ -1,15 +1,25 @@
-name = "hoopbrain-proxy"
-main = "worker.js"
-compatibility_date = "2025-01-01"
+app = "hoopbrain-proxy"
 
-account_id = "e1314ca11d75591a8d7d262a8bbecf33"
+primary_region = "iad"
 
-workers_dev = false
+[build]
 
-# ❗ Sadece proxy endpointleri Worker'a gider
-routes = [
-    { pattern = "hoopbrain.xyz/proxy/*", zone_id = "0bdf3bd68420f8f8b0c062ae38592bcd" }
-]
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
 
-usage_model = "unbound"
-compatibility_flags = []
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.health_checks]
+    type = "http"
+    interval = "10s"
+    timeout = "2s"
+    method = "get"
+    path = "/"
+    protocol = "http"
