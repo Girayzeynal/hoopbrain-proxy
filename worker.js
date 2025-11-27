@@ -1,19 +1,14 @@
-import fetch from "node-fetch";
-
 export default async function handler(req) {
   try {
-    // Gelen path
     const path = req.originalUrl || "/";
 
-    // Proxy hedefi — FAZ-Core (gerekirse port ekleriz)
+    // Proxy hedefi — FAZ-Core backend
     const targetBase = "https://zeynal-bot-core.fly.dev";
-
-    // Hedef URL
     const targetUrl = new URL(path, targetBase);
 
     // Body oku
     let body = null;
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    if (!["GET", "HEAD"].includes(req.method)) {
       body = await new Promise((resolve) => {
         const chunks = [];
         req.on("data", (c) => chunks.push(c));
@@ -21,17 +16,14 @@ export default async function handler(req) {
       });
     }
 
-    // Header fix — TARAYICI HOST HEADER’I SİL (EN KRİTİK FIX)
-    const cleanHeaders = {
-      ...req.headers,
-    };
+    // Header temizleme (SSL + CORS fix)
+    const cleanHeaders = { ...req.headers };
+    delete cleanHeaders.host;
+    delete cleanHeaders.origin;
+    delete cleanHeaders.referer;
+    delete cleanHeaders["content-length"];
 
-    delete cleanHeaders.host;     // HTTPS fix
-    delete cleanHeaders.origin;   // güvenlik fix
-    delete cleanHeaders.referer;  // CORS fix
-    delete cleanHeaders["content-length"]; // Fly bazen kırıyor
-
-    // Proxy isteği
+    // Proxy request
     const response = await fetch(targetUrl.toString(), {
       method: req.method,
       headers: cleanHeaders,
@@ -39,18 +31,23 @@ export default async function handler(req) {
       redirect: "follow",
     });
 
-    const text = await response.text();
+    // Response type auto-detect
+    const contentType = response.headers.get("content-type") || "";
+    let responseBody;
+
+    if (contentType.includes("application/json")) {
+      responseBody = await response.json();
+    } else {
+      responseBody = await response.text();
+    }
 
     return {
       status: response.status,
-      body: text,
+      body: responseBody,
     };
 
-  } catch (err) {
-    console.error("Proxy error:", err);
-    return {
-      status: 500,
-      body: "Proxy server error",
-    };
+  } catch (error) {
+    console.error("Proxy error:", error);
+    return { status: 500, body: "Proxy server error" };
   }
-} 
+}
