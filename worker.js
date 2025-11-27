@@ -1,20 +1,52 @@
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
+import fetch from "node-fetch";
 
-    // Domain'i Fly.io backend adresine çeviriyoruz
+export default async function handler(req) {
+  try {
+    // Orijinal isteğin tüm detaylarını alıyoruz
+    const originalUrl = req.url;
+    const url = new URL(originalUrl);
+
+    // Domain'i Fly.io backend’e yönlendiriyoruz
     url.hostname = "zeynal-bot-core.fly.dev";
     url.protocol = "https:";
 
-    const modifiedRequest = new Request(url.toString(), {
-      method: request.method,
-      headers: request.headers,
-      body: request.method !== "GET" && request.method !== "HEAD"
-        ? request.body
-        : null,
-      redirect: "follow"
-    });
+    // Body okuma
+    let bodyData = null;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      try {
+        bodyData = await new Promise((resolve) => {
+          let data = [];
+          req.on("data", chunk => data.push(chunk));
+          req.on("end", () => resolve(Buffer.concat(data)));
+        });
+      } catch (e) {
+        console.error("Body parse error:", e);
+      }
+    }
 
-    return await fetch(modifiedRequest);
+    // Yeni request oluşturuyoruz
+    const modifiedRequest = {
+      method: req.method,
+      headers: req.headers,
+      body: bodyData,
+      redirect: "follow"
+    };
+
+    // Backend’e yönlendiriyoruz
+    const response = await fetch(url.toString(), modifiedRequest);
+
+    const responseText = await response.text();
+
+    return {
+      status: response.status,
+      body: responseText
+    };
+
+  } catch (err) {
+    console.error("Proxy error:", err);
+    return {
+      status: 500,
+      body: "Proxy server error"
+    };
   }
-};
+}
