@@ -2,21 +2,19 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // Hedef veri kaynaklarının alanları (ban yememek için)
-    const targetHost = request.headers.get("X-Target-Host");
-    if (!targetHost) {
-      return new Response("Missing X-Target-Host header", { status: 400 });
-    }
+    // Domain'i Fly.io backend adresine çeviriyoruz
+    url.hostname = "zeynal-bot-core.fly.dev";
+    url.protocol = "https:";
 
-    url.host = targetHost;
-
-    const modifiedRequest = new Request(url, {
+    const modifiedRequest = new Request(url.toString(), {
       method: request.method,
       headers: request.headers,
-      body: request.body,
+      body: request.method !== "GET" && request.method !== "HEAD"
+        ? request.body
+        : null,
+      redirect: "follow"
     });
 
-    const response = await fetch(modifiedRequest);
-    return response;
+    return await fetch(modifiedRequest);
   }
-}
+};
