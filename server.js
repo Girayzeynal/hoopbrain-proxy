@@ -4,27 +4,27 @@ import handler from "./worker.js";
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Body parsing
+// JSON / FORM parse
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Root endpoint - Browser test için
+// Browser root test
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-// Sağlık kontrolü
+// Health check
 app.get("/ping", (req, res) => {
   res.send("pong");
 });
 
-// Tüm diğer istekleri worker.js'ye yönlendir
+// Proxy
 app.all("*", async (req, res) => {
   try {
-    const response = await handler(req);
-    res.status(response.status || 200).send(response.body);
-  } catch (error) {
-    console.error("Proxy error:", error);
+    const result = await handler(req);
+    res.status(result.status).send(result.body);
+  } catch (err) {
+    console.error("Proxy error:", err);
     res.status(500).send("Proxy server error");
   }
 });
