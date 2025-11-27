@@ -1,17 +1,13 @@
 import fetch from "node-fetch";
 
+const BACKEND_URL = "http://zeynal-bot-core.internal:8080";
+
 export default async function handler(req) {
   try {
-    // Gelen path
     const path = req.originalUrl || "/";
+    const targetUrl = BACKEND_URL + path;
 
-    // Proxy target base URL (Zeynal bot-core)
-    const targetBase = "https://zeynal-bot-core.fly.dev";
-
-    // Path'i yukarıdaki base ile BİRLEŞTİR (kesin çözüm)
-    const targetUrl = new URL(path, targetBase);
-
-    // Body verisini oku
+    // Body verisi
     let body = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       body = await new Promise((resolve) => {
@@ -22,14 +18,18 @@ export default async function handler(req) {
     }
 
     // Proxy isteği
-    const response = await fetch(targetUrl.toString(), {
+    const response = await fetch(targetUrl, {
       method: req.method,
-      headers: req.headers,
+      headers: {
+        ...req.headers,
+        host: undefined, // backend host override engelleme
+      },
       body: body,
       redirect: "follow",
     });
 
     const text = await response.text();
+
     return {
       status: response.status,
       body: text,
@@ -42,4 +42,4 @@ export default async function handler(req) {
       body: "Proxy server error",
     };
   }
-} 
+}
