@@ -1,19 +1,58 @@
 app = "hoopbrain-proxy"
 primary_region = "iad"
 
-[http_service]
-internal_port = 8080
-force_https = true
-auto_stop_machines = true
-auto_start_machines = true
-min_machines_running = 1
-processes = ["app"]
-
-[[vm]]
-memory = "1024mb"
-cpu_kind = "shared"
-cpus = 1
+kill_signal = "SIGINT"
+kill_timeout = "5s"
 
 [env]
 NODE_ENV = "production"
 PORT = "8080"
+
+# ================================
+#  HTTP SERVICE (LOAD BALANCER)
+# ================================
+[http_service]
+internal_port = 8080
+force_https = true
+
+# Proxy daima 1 makine açık → yük olunca 3'e çıkar
+auto_start_machines = true
+auto_stop_machines = false
+min_machines_running = 1
+max_machines_running = 3
+
+processes = ["app"]
+
+# ================================
+#  MACHINE TYPE
+# ================================
+[[vm]]
+cpu_kind = "shared"
+cpus = 1
+memory = "1024mb"
+
+# ================================
+#  SECONDARY REGION (Failover)
+# ================================
+[[services]]
+internal_port = 8080
+protocol = "tcp"
+
+  [[services.ports]]
+  port = 80
+
+  [[services.ports]]
+  port = 443
+
+  [[services.concurrency]]
+  type = "requests"
+  soft_limit = 50
+  hard_limit = 100
+
+# Allow traffic to scale across regions
+[deploy]
+strategy = "rolling"
+
+[experimental]
+allowed_public_ports = []
+auto_rollback = true 
