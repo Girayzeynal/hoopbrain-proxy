@@ -1,9 +1,6 @@
 app = "hoopbrain-proxy"
 primary_region = "ams"
 
-# IAD gibi başka bölgelere makine açılmasını tamamen engeller
-force_region = true
-
 kill_signal = "SIGINT"
 kill_timeout = "5s"
 
@@ -11,9 +8,6 @@ kill_timeout = "5s"
 NODE_ENV = "production"
 PORT = "8080"
 
-# ==========================================
-# HTTP SERVICE (LOAD BALANCER)
-# ==========================================
 [http_service]
 internal_port = 8080
 force_https = true
@@ -23,20 +17,14 @@ min_machines_running = 1
 max_machines_running = 2
 processes = ["app"]
 
-# ==========================================
-# MACHINE TYPE
-# ==========================================
 [[vm]]
 cpu_kind = "shared"
 cpus = 1
 memory = "512mb"
 
-# ==========================================
-# SERVICES (MAKİNA MODELINE UYUMLU FORMAT)
-# ==========================================
 [[services]]
-protocol = "tcp"
 internal_port = 8080
+protocol = "tcp"
 
   [[services.ports]]
   port = 80
@@ -44,20 +32,11 @@ internal_port = 8080
   [[services.ports]]
   port = 443
 
-  [[services.concurrency]]
-  type = "requests"
-  soft_limit = 60
-  hard_limit = 120
+  concurrency = { type = "requests", soft_limit = 60, hard_limit = 120 }
 
-# ==========================================
-# DEPLOY STRATEGY
-# ==========================================
 [deploy]
 strategy = "rolling"
 
-# ==========================================
-# EXPERIMENTAL
-# ==========================================
 [experimental]
 allowed_public_ports = []
 auto_rollback = true
