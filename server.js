@@ -29,6 +29,9 @@ app.all("*", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// ------------------------------------
+// 🔥 KRİTİK SATIR: 0.0.0.0 EKLENDİ
+// ------------------------------------
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`HoopBrain Proxy is running on port ${PORT}`);
 });
