@@ -1,31 +1,46 @@
 app = "hoopbrain-proxy"
 primary_region = "ams"
+
 kill_signal = "SIGINT"
 kill_timeout = "5s"
 
-[deploy]
-  strategy = "immediate"
-
+# ==========================================
+# ENV
+# ==========================================
 [env]
   NODE_ENV = "production"
   PORT = "8080"
 
-[experimental]
-  auto_rollback = true
-
+# ==========================================
+# HTTP SERVICE (24/7 – STABLE)
+# ==========================================
 [http_service]
   internal_port = 8080
   force_https = true
 
-  # Auto-scaling
-  auto_start_machines = true
-  auto_stop_machines = true    # boşta olanlar uykuya
-  min_machines_running = 1     # 1 tanesi 7/24
-  max_machines_running = 2     # yükte ikinci açılır
+  auto_start_machines = true       # yük olduğunda aç
+  auto_stop_machines = false       # ASLA uykuya alma
+  min_machines_running = 1         # her zaman 1 makine aktif
+  max_machines_running = 2         # yük gelince 2. makine açılır
 
   processes = ["app"]
 
+# ==========================================
+# VM CONFIG (FREE TIER UYUMLU)
+# ==========================================
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory = "512mb" 
+  memory = "512mb"
+
+# ==========================================
+# DEPLOY STRATEGY
+# ==========================================
+[deploy]
+  strategy = "immediate"
+
+# ==========================================
+# EXPERIMENTAL (ROLLBACK SİSTEMİ AÇIK)
+# ==========================================
+[experimental]
+  auto_rollback = true 
