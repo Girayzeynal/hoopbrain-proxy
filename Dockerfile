@@ -3,20 +3,19 @@ FROM node:20-slim
 # Çalışma klasörü
 WORKDIR /app
 
-# Sadece paket dosyaları
+# Sadece package dosyaları
 COPY package*.json ./
 
-# Prod bağımlılıkları
-RUN npm install --production
+# Burada HATA YAPAN KISMI DEĞİŞTİRİYORUZ:
+# npm ci --omit=dev DEĞİL
+RUN npm install --omit=dev
 
-# Uygulamanın kalan kısmı
+# Uygulamanın geri kalanı
 COPY . .
 
-# Env
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Fly healthcheck vs.
 EXPOSE 8080
 
 CMD ["node", "server.js"] 
