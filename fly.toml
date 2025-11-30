@@ -1,6 +1,5 @@
 app = "hoopbrain-proxy"
 primary_region = "ams"
-
 kill_signal = "SIGINT"
 kill_timeout = "5s"
 
@@ -26,7 +25,6 @@ kill_timeout = "5s"
   strategy = "immediate"
 
 [experimental]
-  allowed_public_ports = []
   auto_rollback = true
 
 [checks]
@@ -34,4 +32,4 @@ kill_timeout = "5s"
     port = 8080
     type = "tcp"
     interval = "10s"
-    timeout = "3s"
+    timeout = "3s" 
