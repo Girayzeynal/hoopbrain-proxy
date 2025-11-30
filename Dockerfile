@@ -1,20 +1,22 @@
-# Node 20 LTS — Fly.io için ideal
 FROM node:20-slim
 
-# Çalışma dizini
+# Çalışma klasörü
 WORKDIR /app
 
-# Paketleri önce kopyala (cache için)
+# Sadece paket dosyaları
 COPY package*.json ./
 
-# Prod modunda kurulum
+# Prod bağımlılıkları
 RUN npm install --production
 
-# Uygulamanın geri kalanını kopyala
+# Uygulamanın kalan kısmı
 COPY . .
 
-# Uygulama 8080'i dinliyor
+# Env
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Fly healthcheck vs.
 EXPOSE 8080
 
-# 0.0.0.0 üzerinde server.js çalıştır
-CMD ["node", "server.js"]
+CMD ["node", "server.js"] 
