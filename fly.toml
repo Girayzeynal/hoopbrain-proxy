@@ -1,7 +1,6 @@
 app = "hoopbrain-proxy"
 primary_region = "ams"
 
-# UYKU MODU KAPALI
 kill_signal = "SIGINT"
 kill_timeout = "5s"
 
@@ -9,40 +8,30 @@ kill_timeout = "5s"
   NODE_ENV = "production"
   PORT = "8080"
 
-# ==========================================
-# HTTP SERVICE (24/7 AÇIK – STABLE)
-# ==========================================
 [http_service]
   internal_port = 8080
   force_https = true
-
-  # AUTO SCALE
   auto_start_machines = true
-  auto_stop_machines = false    # uyku modu kapalı
-
-  # Yalnızca 1 makine çalışacak — stabil
+  auto_stop_machines = false
   min_machines_running = 1
   max_machines_running = 1
-
   processes = ["app"]
 
-# ==========================================
-# MACHINE TYPE (FREE TIER UYUMLU)
-# ==========================================
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
   memory = "512mb"
 
-# ==========================================
-# DEPLOY STRATEGY
-# ==========================================
 [deploy]
-  strategy = "immediate"   # rolling değil, hızlı deploy
+  strategy = "immediate"
 
-# ==========================================
-# EXPERIMENTAL
-# ==========================================
 [experimental]
   allowed_public_ports = []
   auto_rollback = true
+
+[checks]
+  [checks.ping]
+    port = 8080
+    type = "tcp"
+    interval = "10s"
+    timeout = "3s"
