@@ -1,30 +1,35 @@
 import express from "express";
 import handler from "./worker.js";
+import fetch from "node-fetch";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Request body limits
+// Body limits
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 // Root
 app.get("/", (req, res) => {
-  res.status(200).send("OK - HoopBrain Proxy");
+  res.status(200).send("OK - HoopBrain Proxy F14");
 });
 
-// Health: gerçek backend üzerinden doğrulama
+// Health check
 app.get("/ping", async (req, res) => {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
     const hb = await fetch("https://zeynal-bot-core.fly.dev/ping", {
       method: "GET",
-      timeout: 3000,
+      signal: controller.signal,
     });
 
-    if (hb.ok) return res.status(200).send("pong");
+    clearTimeout(timeout);
 
+    if (hb.ok) return res.status(200).send("pong");
     return res.status(503).send("backend-failed");
-  } catch (_) {
+  } catch (err) {
     return res.status(503).send("backend-error");
   }
 });
@@ -40,6 +45,7 @@ app.all("*", async (req, res) => {
   }
 });
 
+// Listen
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`HoopBrain Proxy is running on port ${PORT}`);
-}); 
+  console.log(`🔥 HoopBrain Proxy F14 running at 0.0.0.0:${PORT}`);
+});
