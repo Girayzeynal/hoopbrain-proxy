@@ -4,15 +4,12 @@
   "private": true,
   "type": "module",
   "main": "server.js",
-
   "scripts": {
     "start": "node server.js"
   },
-
   "engines": {
     "node": ">=20.0.0"
   },
-
   "dependencies": {
     "express": "^4.19.2",
     "node-fetch": "^3.3.2"
