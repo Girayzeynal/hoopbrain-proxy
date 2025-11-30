@@ -1,24 +1,20 @@
-# ===============================
-#  FAZ-14 HOOPBRAIN PROXY DOCKERFILE
-# ===============================
+# Node 20 LTS — Fly.io için ideal
 FROM node:20-slim
 
 # Çalışma dizini
 WORKDIR /app
 
-# Paketler
+# Paketleri önce kopyala (cache için)
 COPY package*.json ./
-RUN npm ci --omit=dev
 
-# Proje dosyaları
+# Prod modunda kurulum
+RUN npm install --production
+
+# Uygulamanın geri kalanını kopyala
 COPY . .
 
-# Container health check
-HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD \
-  ["node", "-e", "fetch('http://localhost:8080/ping').then(r=>{if(r.ok)process.exit(0); else process.exit(1)}).catch(()=>process.exit(1))"]
-
-# Port
+# Uygulama 8080'i dinliyor
 EXPOSE 8080
 
-# Start
+# 0.0.0.0 üzerinde server.js çalıştır
 CMD ["node", "server.js"]
