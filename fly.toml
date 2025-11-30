@@ -16,10 +16,13 @@ kill_timeout = "5s"
 [http_service]
   internal_port = 8080
   force_https = true
+
+  # Auto-scaling
   auto_start_machines = true
-  auto_stop_machines = false
-  min_machines_running = 1
-  max_machines_running = 1
+  auto_stop_machines = true    # boşta olanlar uykuya
+  min_machines_running = 1     # 1 tanesi 7/24
+  max_machines_running = 2     # yükte ikinci açılır
+
   processes = ["app"]
 
 [[vm]]
