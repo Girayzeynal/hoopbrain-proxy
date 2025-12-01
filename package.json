@@ -1,15 +1,17 @@
 {
   "name": "hoopbrain-proxy",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
+  "description": "HoopBrain Proxy F15 - simple HTTP proxy for zeynal-bot-core",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "axios": "^1.7.7",
     "cors": "^2.8.5",
-    "axios": "^1.6.2"
+    "express": "^4.21.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
