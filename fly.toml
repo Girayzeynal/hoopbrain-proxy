@@ -14,12 +14,9 @@ kill_timeout = "5s"
 [http_service]
   internal_port = 8080
   force_https = true
-  
-  # 🔥 Makineyi ASLA durdurmasın (özellikle free Plan için şart)
+
   auto_start_machines = true
   auto_stop_machines = false
-  
-  # 🔥 En az 1 makine her zaman çalışsın
   min_machines_running = 1
 
   processes = ["app"]
