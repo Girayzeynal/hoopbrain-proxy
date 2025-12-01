@@ -2,21 +2,15 @@ import fetch from "node-fetch";
 
 const TARGET = "https://zeynal-bot-core.fly.dev";
 
-// Circuit breaker state
 let failCount = 0;
 let circuitOpen = false;
 let circuitResetTime = 0;
 
-// 👉 DOĞRU DEFAULT EXPORT BURADA
 export default async function handler(req) {
   const now = Date.now();
 
-  // CIRCUIT BREAKER
   if (circuitOpen && now < circuitResetTime) {
-    return {
-      status: 503,
-      body: "backend-down-circuit-open",
-    };
+    return { status: 503, body: "backend-down-circuit-open" };
   }
 
   if (circuitOpen && now >= circuitResetTime) {
@@ -48,6 +42,7 @@ export default async function handler(req) {
   cleanHeaders["x-proxy"] = "hoopbrain-proxy-f14";
 
   const MAX_RETRY = 3;
+
   for (let i = 0; i < MAX_RETRY; i++) {
     try {
       const response = await fetch(targetUrl.toString(), {
@@ -55,7 +50,7 @@ export default async function handler(req) {
         headers: cleanHeaders,
         body,
         redirect: "follow",
-        timeout: 5000,
+        timeout: 5000
       });
 
       const text = await response.text();
@@ -66,19 +61,14 @@ export default async function handler(req) {
       return { status: response.status, body: text };
     } catch (err) {
       failCount++;
-
-      console.error(
-        `[RETRY ${i + 1}/${MAX_RETRY}] Error → ${targetUrl} ::`,
-        err.message
-      );
+      console.error(`[RETRY ${i + 1}/${MAX_RETRY}]`, err.message);
 
       if (failCount >= 3) {
         circuitOpen = true;
         circuitResetTime = Date.now() + 15000;
-        console.error("CIRCUIT OPENED for 15s");
       }
     }
   }
 
   return { status: 503, body: "backend-failed-all-retries" };
-}
+} 
