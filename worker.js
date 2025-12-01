@@ -1,48 +1,84 @@
-import express from "express";
-import handler from "./worker.js";
+import fetch from "node-fetch";
 
-const app = express();
-const PORT = process.env.PORT || 8080;
+const TARGET = "https://zeynal-bot-core.fly.dev";
 
-// Gövde limitleri
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+// Circuit breaker state
+let failCount = 0;
+let circuitOpen = false;
+let circuitResetTime = 0;
 
-// Root basit test
-app.get("/", (req, res) => {
-  res.status(200).send("OK - HoopBrain Proxy");
-});
+// 👉 DOĞRU DEFAULT EXPORT BURADA
+export default async function handler(req) {
+  const now = Date.now();
 
-// Healthcheck: backend'i de test eden ping
-app.get("/ping", async (req, res) => {
-  try {
-    const hb = await fetch("https://zeynal-bot-core.fly.dev/ping", {
-    method: "GET",
-      // Node 20'de global fetch var, ayrıca import gerekmez
+  // CIRCUIT BREAKER
+  if (circuitOpen && now < circuitResetTime) {
+    return {
+      status: 503,
+      body: "backend-down-circuit-open",
+    };
+  }
+
+  if (circuitOpen && now >= circuitResetTime) {
+    circuitOpen = false;
+    failCount = 0;
+  }
+
+  const path = req.originalUrl || "/";
+  if (path === "/" || path.startsWith("/ping")) {
+    return { status: 200, body: "LOCAL_ROUTE" };
+  }
+
+  const targetUrl = new URL(path, TARGET);
+
+  let body = null;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    body = await new Promise((resolve) => {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => resolve(Buffer.concat(chunks)));
     });
+  }
 
-    if (hb.ok) {
-      return res.status(200).send("pong");
+  const cleanHeaders = { ...req.headers };
+  delete cleanHeaders.host;
+  delete cleanHeaders.origin;
+  delete cleanHeaders.referer;
+  delete cleanHeaders["content-length"];
+  cleanHeaders["x-proxy"] = "hoopbrain-proxy-f14";
+
+  const MAX_RETRY = 3;
+  for (let i = 0; i < MAX_RETRY; i++) {
+    try {
+      const response = await fetch(targetUrl.toString(), {
+        method: req.method,
+        headers: cleanHeaders,
+        body,
+        redirect: "follow",
+        timeout: 5000,
+      });
+
+      const text = await response.text();
+
+      failCount = 0;
+      circuitOpen = false;
+
+      return { status: response.status, body: text };
+    } catch (err) {
+      failCount++;
+
+      console.error(
+        `[RETRY ${i + 1}/${MAX_RETRY}] Error → ${targetUrl} ::`,
+        err.message
+      );
+
+      if (failCount >= 3) {
+        circuitOpen = true;
+        circuitResetTime = Date.now() + 15000;
+        console.error("CIRCUIT OPENED for 15s");
+      }
     }
-
-    return res.status(503).send("backend-failed");
-  } catch (err) {
-    console.error("Ping backend error:", err.message);
-    return res.status(503).send("backend-error");
   }
-});
 
-// Tüm diğer istekler → worker.js proxy
-app.all("*", async (req, res) => {
-  try {
-    const result = await handler(req);
-    res.status(result.status).send(result.body);
-  } catch (err) {
-    console.error("Proxy handler crashed:", err);
-    res.status(500).send("Proxy internal error");
-  }
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`HoopBrain Proxy is running on port ${PORT}`);
-}); 
+  return { status: 503, body: "backend-failed-all-retries" };
+}
