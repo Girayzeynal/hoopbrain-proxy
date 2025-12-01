@@ -1,23 +1,19 @@
 app = "hoopbrain-proxy"
 primary_region = "ams"
 
-kill_signal = "SIGINT"
-kill_timeout = "5s"
-
-[deploy]
-  strategy = "immediate"
-
-[env]
-  NODE_ENV = "production"
-  PORT = "8080"
-
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_start_machines = false   # Makine tek, hep çalışacak
-  auto_stop_machines = false    # KAPALI → restart loop bitiyor
-  min_machines_running = 1      # 1 makine aktif
+  auto_start_machines = true
+  auto_stop_machines = false
+  min_machines_running = 1
   processes = ["app"]
+
+  [http_service.checks]
+    [http_service.checks.http]
+      path = "/"
+      interval = "10s"
+      timeout = "5s"
 
 [[vm]]
   cpu_kind = "shared"
