@@ -1,30 +1,60 @@
-import express from "express";
-import handler from "./worker.js";
+// ====================================================================
+// 🎯 HoopBrain Proxy F14 - Final Production Server
+// ====================================================================
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
 
 const app = express();
+app.use(cors());
+
 const PORT = process.env.PORT || 8080;
 
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
-
+// ---------------------------
+// HEALTH ENDPOINTS
+// ---------------------------
 app.get("/", (req, res) => {
-  res.status(200).send("OK - HoopBrain Proxy F14");
+  res.send("OK - HoopBrain Proxy F14");
 });
 
 app.get("/ping", (req, res) => {
-  res.status(200).send("pong");
+  res.send("pong");
 });
 
-app.all("*", async (req, res) => {
+app.get("/ping-b", (req, res) => {
+  res.send("PING_BACK_OK");
+});
+
+app.get("/local", (req, res) => {
+  res.send("LOCAL_ROUTE");
+});
+
+// ---------------------------
+// PROXY ROUTE
+// ---------------------------
+app.get("/proxy", async (req, res) => {
+  const url = req.query.url;
+
+  if (!url) {
+    return res.status(400).json({ error: "Missing ?url=" });
+  }
+
   try {
-    const result = await handler(req);
-    res.status(result.status).send(result.body);
+    const response = await axios.get(url, {
+      headers: { "User-Agent": "HoopBrain-Proxy-F14" },
+    });
+    res.status(200).send(response.data);
   } catch (err) {
-    console.error("Proxy error:", err);
-    res.status(500).send("Proxy internal error");
+    res.status(500).json({
+      error: "Proxy error",
+      details: err.message,
+    });
   }
 });
 
+// ---------------------------
+// START
+// ---------------------------
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🔥 HoopBrain Proxy F14 running at 0.0.0.0:${PORT}`);
-}); 
+});
