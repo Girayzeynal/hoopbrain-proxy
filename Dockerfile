@@ -9,8 +9,8 @@ WORKDIR /app
 # Önce sadece package dosyaları (cache için)
 COPY package*.json ./
 
-# package-lock.json olmadığından npm ci KULLANMIYORUZ.
-# Normal install + dev dependency yok.
+# package-lock.json OLMADIĞI için npm ci KULLANMIYORUZ
+# Normal install, dev dependency yok
 RUN npm install --omit=dev --ignore-scripts \
     && npm cache clean --force
 
