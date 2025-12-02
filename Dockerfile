@@ -1,12 +1,23 @@
-FROM node:20-alpine
+# lightweight Python image
+FROM python:3.11-slim
+
+# Çöp paketleri temizlemek için temel araçlar
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY package.json ./
+# Requirements
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN npm install --omit=dev --legacy-peer-deps --prefer-online --force
+# Uygulama
+COPY main.py /app/
 
-COPY . .
+# Fly.io port
+ENV PORT=8080
+ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8080
-CMD ["node", "server.js"]
+# Gunicorn ile tek worker, düşük RAM
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "main:app"]
