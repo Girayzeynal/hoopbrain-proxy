@@ -1,23 +1,45 @@
-# lightweight Python image
-FROM python:3.11-slim
+# ================================================================
+# 🧠 HoopBrain Proxy Dockerfile (Fly.io 512 MB uyumlu)
+# - Sadece Node.js proxy servisi çalıştırır.
+# - FAZ-7.9 / FAZ-10 / FAZ-11 / FAZ-12 / FAZ-13 / FAZ-17 / FAZ-22 / FAZ-23
+#   mantığı ana bot (zeynal-bot-core) tarafında; burası sadece HTTP proxy.
+# ================================================================
 
-# Çöp paketleri temizlemek için temel araçlar
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Küçük ve hafif base image
+FROM node:20-alpine
 
+# Güvenlik ve boyut için ortam değişkenleri
+ENV NODE_ENV=production \
+    PORT=8080 \
+    HOST=0.0.0.0
+
+# Çalışma klasörü
 WORKDIR /app
 
-# Requirements
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# ------------------------------------------------
+# 1) Bağımlılıkları kur
+#   - Sadece package.json / package-lock.json kopyalanır
+#   - npm ci production modda (devDeps yok) → RAM/Disk tasarrufu
+# ------------------------------------------------
+COPY package*.json ./
 
-# Uygulama
-COPY main.py /app/
+RUN npm ci --only=production --ignore-scripts \
+    && npm cache clean --force
 
-# Fly.io port
-ENV PORT=8080
-ENV PYTHONUNBUFFERED=1
+# ------------------------------------------------
+# 2) Uygulama kodunu kopyala
+#    (server.js vs. ne varsa hepsi)
+# ------------------------------------------------
+COPY . .
 
-# Gunicorn ile tek worker, düşük RAM
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "main:app"]
+# ------------------------------------------------
+# 3) Fly.io için port bildir
+# ------------------------------------------------
+EXPOSE 8080
+
+# ------------------------------------------------
+# 4) Çalıştırma komutu
+#    (node resmi imajında ENTRYPOINT = docker-entrypoint.sh,
+#     biz sadece CMD ile server.js’i başlatıyoruz)
+# ------------------------------------------------
+CMD ["node", "server.js"] 
