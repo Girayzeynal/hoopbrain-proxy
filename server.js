@@ -37,6 +37,15 @@ app.get("/local", (req, res) => {
   res.send("LOCAL_ROUTE");
 });
 
+app.get('/ping', (req, res) => {
+    res.json({
+        status: "ok",
+        engine: "hoopbrain-proxy",
+        faz: "FAZ-23 META ENGINE FULL STACK",
+        time: new Date().toISOString()
+    });
+});
+
 // ---------------------------
 // PROXY ROUTE
 // ---------------------------
