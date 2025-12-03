@@ -25,6 +25,14 @@ app.get("/ping-b", (req, res) => {
   res.send("PING_BACK_OK");
 });
 
+app.get('/ping', (req, res) => {
+    res.json({
+        status: "ok",
+        engine: "hoopbrain-proxy",
+        time: new Date().toISOString()
+    });
+});
+
 app.get("/local", (req, res) => {
   res.send("LOCAL_ROUTE");
 });
