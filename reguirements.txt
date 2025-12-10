@@ -1,3 +1,4 @@
-fastapi
-uvicorn[standard]
+flask
 requests
+beautifulsoup4
+gunicorn 
