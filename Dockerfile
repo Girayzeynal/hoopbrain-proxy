@@ -1,15 +1,17 @@
 FROM python:3.11-slim
 
-WORKDIR /app
-
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
 
-COPY . .
+# Gereken Python paketleri
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Uygulama kodu
+COPY . /app
 
 ENV PORT=8080
 
-CMD ["python", "main.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "main:app"] 
