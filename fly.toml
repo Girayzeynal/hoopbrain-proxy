@@ -1,5 +1,5 @@
 # ============================================================
-# 🔥 HoopBrain Proxy — Fly.io FULL BUILD
+# 🔥 HoopBrain Proxy — Fly.io Free Plan
 # ============================================================
 
 app = "hoopbrain-proxy"
@@ -12,22 +12,25 @@ kill_timeout = "5s"
   dockerfile = "Dockerfile"
 
 [env]
-  PORT = "8080"
   PYTHONUNBUFFERED = "1"
-  PYTHONDONTWRITEBYTECODE = "1"
-  # Buraya istersen API_KEY, SECRET_KEY vs ekleyebiliriz.
-  # Faz-13 & Faz-23 sorguları buradan proxy'ye taşınacak.
+  PORT = "8080"
+
+# ============================================================
+# HTTP Service
+# ============================================================
 
 [[services]]
   internal_port = 8080
-  processes = ["app"]
-
   protocol = "tcp"
+  auto_start = true
+  auto_stop = true
+  auto_stop_machines = true
+  min_machines_running = 0
 
   [services.concurrency]
-    type = "requests"
+    type = "connections"
+    hard_limit = 25
     soft_limit = 20
-    hard_limit = 40
 
   [[services.ports]]
     port = 80
@@ -37,10 +40,20 @@ kill_timeout = "5s"
     port = 443
     handlers = ["tls", "http"]
 
-  [services.http_checks]
-    interval = "6s"
-    timeout = "3s"
-    method = "get"
-    path = "/health"
-    protocol = "http"
-    restart_limit = 5
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "10s"
+    timeout = "2s"
+    restart_limit = 0
+
+# ============================================================
+# Health Check → PROXY /ping endpoint
+# ============================================================
+
+[checks.health]
+  type = "http"
+  port = 8080
+  interval = "15s"
+  timeout = "2s"
+  path = "/ping"
+  grace_period = "10s"
