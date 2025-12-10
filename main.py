@@ -1,237 +1,186 @@
 import os
 import time
-import logging
-from typing import Dict, Any, Optional
-
+import json
+import traceback
+from fastapi import FastAPI, Query
+from fastapi.responses import JSONResponse
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify, request
 
-# ================================================================
-# LOGGING
-# ================================================================
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-log = logging.getLogger("hoopbrain-proxy")
+# ============================================================
+# 🔥 HOOPBRAIN PROXY — FAZ-23 + FAZ-13 UYUMLU ÇEKİRDEK
+# ============================================================
 
-# ================================================================
-# CONFIG
-# ================================================================
-DEFAULT_TIMEOUT = float(os.getenv("PROXY_TIMEOUT", "6.0"))
-
-USER_AGENT = os.getenv(
-    "PROXY_UA",
-    "HoopBrainProxy/1.0 (+https://hoopbrain.xyz; bot for basketball stats)",
+app = FastAPI(
+    title="HoopBrain Proxy",
+    version="23.0",
+    description="FAZ-23 + FAZ-13 için istatistik, barem, haber, live veri proxy çekirdek servisi."
 )
 
-HEADERS = {
-    "User-Agent": USER_AGENT,
-    "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
-}
+# ------------------------------------------------------------
+# GLOBAL RATE-LIMIT (60 req / 60 sec)
+# ------------------------------------------------------------
+REQ_LIMIT = 60
+WINDOW = 60
+req_times = []
 
-# İlerde API key eklemek istersen:
-# BALLEDONTLIE_API_KEY = os.getenv("BALLDONTLIE_API_KEY", "")
+def allow_request():
+    now = time.time()
+    req_times.append(now)
+    while req_times and req_times[0] < now - WINDOW:
+        req_times.pop(0)
+    return len(req_times) <= REQ_LIMIT
 
-# ================================================================
-# FLASK APP
-# ================================================================
-app = Flask(__name__)
 
-# ================================================================
-# YARDIMCI: güvenli HTTP GET
-# ================================================================
-def safe_get(url: str, params: Optional[Dict[str, Any]] = None) -> Optional[requests.Response]:
+# ------------------------------------------------------------
+# GENEL REQUEST FONKSİYONU (timeout + fail-safe)
+# ------------------------------------------------------------
+def fetch_url(url: str):
     try:
-        resp = requests.get(
-            url,
-            params=params or {},
-            headers=HEADERS,
-            timeout=DEFAULT_TIMEOUT,
-        )
-        if resp.status_code != 200:
-            log.warning("GET %s status=%s", url, resp.status_code)
-            return None
-        return resp
+        if not allow_request():
+            return {"error": "Rate limit exceeded"}
+
+        r = requests.get(url, timeout=7, headers={
+            "User-Agent": "Mozilla/5.0 (HoopBrain Proxy)"
+        })
+        r.raise_for_status()
+        return r.text
     except Exception as e:
-        log.error("safe_get error url=%s err=%s", url, e)
-        return None
+        return {"error": str(e)}
 
 
-# ================================================================
-# PROVIDER İSKELETLERİ
-# (Buraya ileride gerçek scraping kodlarını koyacağız)
-# ================================================================
-
-def provider_flashscore_prematch(match_key: str) -> Dict[str, Any]:
-    """
-    Prematch provider iskeleti.
-    match_key formatı: 'FENER@EFES' veya 'INDIANA@SACRAMENTO'
-    ŞU AN DUMMY – sadece iskelet.
-    """
+# ------------------------------------------------------------
+# ✔ 1) LIVE PROVIDERS (FAZ-23 çekirdek uyumlu)
+# ------------------------------------------------------------
+@app.get("/live")
+def get_live(match_id: str = Query(...)):
     try:
-        home, away = match_key.split("@", 1)
-    except ValueError:
-        home, away = match_key, "UNKNOWN"
+        url = f"https://www.flashscore.com/match/{match_id}/#/match-summary"
+        html = fetch_url(url)
+        if isinstance(html, dict):
+            return html
 
-    # TODO: Buraya gerçek flashscore/mackolik tarzı scraping
-    # Şu anda lig/line vs. sabit dönüyor → FAZ-23 iskeleti çalışsın diye.
-    base_total = 162.0
-    pace_factor = 1.0
-    news_score = 0.0
+        soup = BeautifulSoup(html, "lxml")
 
-    return {
-        "source": "DUMMY_FLASH",
-        "home": home,
-        "away": away,
-        "league": "UNKNOWN",
-        "book_total_line": base_total,
-        "avg_total": base_total,
-        "pace_factor": pace_factor,
-        "news_score": news_score,
-    }
+        score = soup.select_one(".detailScore__wrapper")
+        home = soup.select_one(".participant__home .participant__participantName")
+        away = soup.select_one(".participant__away .participant__participantName")
+
+        return {
+            "match_id": match_id,
+            "home": home.text.strip() if home else None,
+            "away": away.text.strip() if away else None,
+            "score": score.text.strip() if score else None
+        }
+
+    except Exception as e:
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
-def provider_flashscore_live(match_key: str) -> Dict[str, Any]:
-    """
-    Live provider iskeleti.
-    ŞU AN DUMMY – canlı skor kaynağı bağlayınca burası dolacak.
-    """
+# ------------------------------------------------------------
+# ✔ 2) İSTATİSTİK / TAKIM FORM / H2H (FAZ-13 uyumlu)
+# ------------------------------------------------------------
+@app.get("/stats")
+def get_stats(match_id: str = Query(...)):
     try:
-        home, away = match_key.split("@", 1)
-    except ValueError:
-        home, away = match_key, "UNKNOWN"
+        url = f"https://www.flashscore.com/match/{match_id}/#/h2h/overall"
+        html = fetch_url(url)
+        if isinstance(html, dict):
+            return html
 
-    # TODO: Canlı skor + tempo entegrasyonu
-    return {
-        "source": "DUMMY_LIVE",
-        "home": home,
-        "away": away,
-        "quarter": 1,
-        "clock": "10:00",
-        "home_score": 0,
-        "away_score": 0,
-        "live_pace": 0.0,
-        "fouls_home": 0,
-        "fouls_away": 0,
-        "news_score": 0.0,
-    }
+        soup = BeautifulSoup(html, "lxml")
 
+        blocks = soup.select(".h2h__section")
+        data = []
 
-# ================================================================
-# FAZ-23 PREMATCH & LIVE AGGREGATOR
-# ================================================================
-def build_faz23_prematch(match_key: str) -> Dict[str, Any]:
-    """
-    FAZ-23 prematch için ortak JSON formatı.
-    Core = provider_* çıktısı, buradan FAZ-23 çekirdeğine düzgün JSON gider.
-    """
-    core = provider_flashscore_prematch(match_key)
+        for b in blocks:
+            title = b.select_one(".section__title")
+            table = b.select("tr")
+            rows = []
+            for row in table:
+                cols = [c.text.strip() for c in row.select("td")]
+                if cols:
+                    rows.append(cols)
 
-    line = float(core.get("book_total_line") or 160.5)
-    avg_total = float(core.get("avg_total") or line)
-    pace_factor = float(core.get("pace_factor") or 1.0)
-    news_score = float(core.get("news_score") or 0.0)
+            data.append({
+                "title": title.text.strip() if title else None,
+                "rows": rows
+            })
 
-    # Basit spread hesabı: tempo + haber etkisi
-    spread = max(6.0, 16.0 * pace_factor + 4.0 * abs(news_score))
+        return {"match_id": match_id, "data": data}
 
-    return {
-        "match_key": match_key,
-        "home": core.get("home"),
-        "away": core.get("away"),
-        "league": core.get("league"),
-        "line": line,
-        "avg_total": avg_total,
-        "pace_factor": pace_factor,
-        "news_score": news_score,
-        "spread": spread,
-        "min_total": avg_total - spread / 2,
-        "max_total": avg_total + spread / 2,
-        "raw": core,
-    }
+    except Exception as e:
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
-def build_faz23_live(match_key: str) -> Dict[str, Any]:
-    """
-    FAZ-23 live için ortak JSON formatı.
-    """
-    live = provider_flashscore_live(match_key)
+# ------------------------------------------------------------
+# ✔ 3) BAREM / MAÇ ÖNCESİ LİNE (iddaa – nesine – odds API)
+# ------------------------------------------------------------
+@app.get("/barem")
+def get_barems(match_id: str = Query(...)):
+    try:
+        url = f"https://www.mackolik.com/basketbol/mac-detay/{match_id}"
+        html = fetch_url(url)
+        if isinstance(html, dict):
+            return html
 
-    quarter = int(live.get("quarter") or 1)
-    home_score = int(live.get("home_score") or 0)
-    away_score = int(live.get("away_score") or 0)
-    total = home_score + away_score
+        soup = BeautifulSoup(html, "lxml")
 
-    # Çok kaba live projection
-    if total <= 0 or quarter <= 0:
-        proj_total = 160.0
-    else:
-        minutes_played = (quarter - 1) * 10.0
-        if minutes_played <= 0:
-            proj_total = 160.0
-        else:
-            pace_per_minute = total / minutes_played
-            proj_total = pace_per_minute * 40.0
+        odds = soup.select(".odds-item")
+        lines = []
 
-    news_score = float(live.get("news_score") or 0.0)
-    spread = 14.0
+        for o in odds:
+            t = o.text.strip().replace("\n", " ")
+            if t:
+                lines.append(t)
 
-    return {
-        "match_key": match_key,
-        "home": live.get("home"),
-        "away": live.get("away"),
-        "quarter": quarter,
-        "clock": live.get("clock"),
-        "home_score": home_score,
-        "away_score": away_score,
-        "live_pace": live.get("live_pace") or 0.0,
-        "fouls_home": live.get("fouls_home") or 0,
-        "fouls_away": live.get("fouls_away") or 0,
-        "news_score": news_score,
-        "proj_total": proj_total,
-        "spread": spread,
-        "min_total": proj_total - spread / 2,
-        "max_total": proj_total + spread / 2,
-        "raw": live,
-    }
+        return {"match_id": match_id, "baremler": lines}
+
+    except Exception as e:
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
-# ================================================================
-# ROUTES
-# ================================================================
+# ------------------------------------------------------------
+# ✔ 4) HABER / SON DAKİKA / KADRO BİLGİSİ (FIBA – NBA – EuroLeague)
+# ------------------------------------------------------------
+@app.get("/news")
+def get_news(team: str = Query(...)):
+    try:
+        url = f"https://news.google.com/search?q={team}+basketball&hl=tr&gl=TR&ceid=TR:tr"
+        html = fetch_url(url)
+        if isinstance(html, dict):
+            return html
+
+        soup = BeautifulSoup(html, "lxml")
+
+        titles = [x.text for x in soup.select("h3")]
+
+        return {
+            "team": team,
+            "count": len(titles),
+            "headlines": titles[:15]
+        }
+
+    except Exception as e:
+        return {"error": str(e), "trace": traceback.format_exc()}
+
+
+# ------------------------------------------------------------
+# ✔ 5) HEALTHCHECK
+# ------------------------------------------------------------
 @app.get("/health")
-def health() -> Any:
-    return jsonify({"status": "ok", "ts": time.time()})
+def health():
+    return {"status": "ok", "uptime": time.time()}
 
 
-@app.get("/proxytest")
-def proxytest() -> Any:
-    # Telegram'daki /proxytest komutu için
-    return jsonify({"pong": True, "ts": time.time()})
-
-
-@app.get("/faz23/prematch")
-def faz23_prematch() -> Any:
-    match = (request.args.get("match") or "").strip()
-    if not match:
-        return jsonify({"error": "match param gerekli, örn: FENER@EFES"}), 400
-
-    data = build_faz23_prematch(match)
-    return jsonify(data)
-
-
-@app.get("/faz23/live")
-def faz23_live() -> Any:
-    match = (request.args.get("match") or "").strip()
-    if not match:
-        return jsonify({"error": "match param gerekli, örn: LAL@BOS"}), 400
-
-    data = build_faz23_live(match)
-    return jsonify(data)
-
-
+# ------------------------------------------------------------
+# MAIN (Fly.io uvicorn runner)
+# ------------------------------------------------------------
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8080"))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8080)),
+        workers=1
+    )
